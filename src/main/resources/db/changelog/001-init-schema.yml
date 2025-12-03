@@ -168,17 +168,7 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: related_operation_id
-                  type: BIGINT
-                  constraints:
-                    nullable: true
-              - column:
                   name: operation_type
-                  type: VARCHAR(16)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: status
                   type: VARCHAR(16)
                   constraints:
                     nullable: false
@@ -187,11 +177,6 @@ databaseChangeLog:
                   type: DECIMAL(19,2)
                   constraints:
                     nullable: false
-              - column:
-                  name: description
-                  type: TEXT
-                  constraints:
-                    nullable: true
               - column:
                   name: created_at
                   type: TIMESTAMP WITH TIME ZONE
@@ -215,23 +200,10 @@ databaseChangeLog:
             constraintName: fk_limit_operations_reservations
             onDelete: SET NULL
 
-        - addForeignKeyConstraint:
-            baseTableName: limit_operations
-            baseColumnNames: related_operation_id
-            referencedTableName: limit_operations
-            referencedColumnNames: id
-            constraintName: fk_limit_operations_related
-            onDelete: SET NULL
-
         - addCheckConstraint:
             tableName: limit_operations
             constraintName: ck_limit_operations_type
-            condition: "operation_type IN ('RESET','RESERVE','DEBIT','CREDIT','RELEASE')"
-
-        - addCheckConstraint:
-            tableName: limit_operations
-            constraintName: ck_limit_operations_status
-            condition: "status IN ('APPLIED','PENDING','REVERSED')"
+            condition: "operation_type IN ('RESET','RESERVE','DEBIT','RELEASE')"
 
         - addCheckConstraint:
             tableName: limit_operations

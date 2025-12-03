@@ -1,6 +1,7 @@
 package limit.domain;
 
 import jakarta.persistence.*;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "users")
@@ -9,14 +10,20 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(nullable = false, unique = true)
-    private String username;
+    @Column(name = "external_id", nullable = false, unique = true, length = 64)
+    private String externalId;
+    @Column(name = "display_name")
+    private String displayName;
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
 
     protected User() {
     }
 
-    public User(String username) {
-        this.username = username;
+    public User(String externalId, String displayName, OffsetDateTime createdAt) {
+        this.externalId = externalId;
+        this.displayName = displayName;
+        this.createdAt = createdAt;
     }
 
     public Long getId() {
@@ -24,10 +31,26 @@ public class User {
     }
 
     public String getUsername() {
-        return username;
+        return externalId;
     }
 
     public void setUsername(String username) {
-        this.username = username;
+        this.externalId = username;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

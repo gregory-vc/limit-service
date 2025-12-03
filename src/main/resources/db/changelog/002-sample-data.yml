@@ -62,69 +62,53 @@ databaseChangeLog:
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-001')"}
               - column: {name: operation_type, value: "RESET"}
-              - column: {name: status, value: "APPLIED"}
               - column: {name: change_amount, valueNumeric: 100000.00}
-              - column: {name: description, value: "Daily reset to default limit"}
         - insert:
             tableName: limit_operations
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-001')"}
               - column: {name: reservation_id, valueComputed: "(SELECT id FROM limit_reservations WHERE status = 'RESERVED' AND user_id = (SELECT id FROM users WHERE external_id = 'u-001') LIMIT 1)"}
               - column: {name: operation_type, value: "RESERVE"}
-              - column: {name: status, value: "APPLIED"}
               - column: {name: change_amount, valueNumeric: -15000.00}
-              - column: {name: description, value: "Reserve for outgoing payment"}
 
         - insert:
             tableName: limit_operations
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-002')"}
               - column: {name: operation_type, value: "RESET"}
-              - column: {name: status, value: "APPLIED"}
               - column: {name: change_amount, valueNumeric: 100000.00}
-              - column: {name: description, value: "Daily reset to default limit"}
         - insert:
             tableName: limit_operations
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-002')"}
               - column: {name: reservation_id, valueComputed: "(SELECT id FROM limit_reservations WHERE status = 'CONFIRMED' AND user_id = (SELECT id FROM users WHERE external_id = 'u-002') LIMIT 1)"}
               - column: {name: operation_type, value: "RESERVE"}
-              - column: {name: status, value: "APPLIED"}
               - column: {name: change_amount, valueNumeric: -20000.00}
-              - column: {name: description, value: "Reservation before charge"}
         - insert:
             tableName: limit_operations
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-002')"}
               - column: {name: reservation_id, valueComputed: "(SELECT id FROM limit_reservations WHERE status = 'CONFIRMED' AND user_id = (SELECT id FROM users WHERE external_id = 'u-002') LIMIT 1)"}
               - column: {name: operation_type, value: "DEBIT"}
-              - column: {name: status, value: "APPLIED"}
               - column: {name: change_amount, valueNumeric: -20000.00}
-              - column: {name: description, value: "Charge confirmed by external system"}
 
         - insert:
             tableName: limit_operations
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-003')"}
               - column: {name: operation_type, value: "RESET"}
-              - column: {name: status, value: "APPLIED"}
               - column: {name: change_amount, valueNumeric: 100000.00}
-              - column: {name: description, value: "Daily reset to default limit"}
         - insert:
             tableName: limit_operations
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-003')"}
               - column: {name: reservation_id, valueComputed: "(SELECT id FROM limit_reservations WHERE status = 'RELEASED' AND user_id = (SELECT id FROM users WHERE external_id = 'u-003') LIMIT 1)"}
               - column: {name: operation_type, value: "RESERVE"}
-              - column: {name: status, value: "APPLIED"}
               - column: {name: change_amount, valueNumeric: -5000.00}
-              - column: {name: description, value: "Temporary hold for card pre-auth"}
         - insert:
             tableName: limit_operations
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-003')"}
               - column: {name: reservation_id, valueComputed: "(SELECT id FROM limit_reservations WHERE status = 'RELEASED' AND user_id = (SELECT id FROM users WHERE external_id = 'u-003') LIMIT 1)"}
               - column: {name: operation_type, value: "RELEASE"}
-              - column: {name: status, value: "APPLIED"}
               - column: {name: change_amount, valueNumeric: 5000.00}
-              - column: {name: description, value: "Reservation released after failed operation"}

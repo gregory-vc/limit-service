@@ -28,3 +28,4 @@ limit:
   default-value: 100000.00
   reset-cron: "0 0 0 * * *"
   reset-batch-size: 10000
+  reservation-ttl: PT1H

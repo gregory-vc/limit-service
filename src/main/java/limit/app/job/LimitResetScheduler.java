@@ -1,6 +1,6 @@
 package limit.app.job;
 
-import limit.app.config.LimitResetProperties;
+import limit.app.config.LimitServiceProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -17,9 +17,9 @@ public class LimitResetScheduler {
     private static final Logger log = LoggerFactory.getLogger(LimitResetScheduler.class);
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
-    private final LimitResetProperties properties;
+    private final LimitServiceProperties properties;
 
-    public LimitResetScheduler(NamedParameterJdbcTemplate jdbcTemplate, LimitResetProperties properties) {
+    public LimitResetScheduler(NamedParameterJdbcTemplate jdbcTemplate, LimitServiceProperties properties) {
         this.jdbcTemplate = jdbcTemplate;
         this.properties = properties;
     }
@@ -62,16 +62,14 @@ public class LimitResetScheduler {
                         RETURNING ul.user_id, t.available_limit AS old_available, ul.available_limit AS new_available
                     ),
                     inserted AS (
-                        INSERT INTO limit_operations (user_id, operation_type, status, change_amount, description, created_at)
-                        SELECT user_id,
-                               'RESET',
-                               'APPLIED',
-                               (new_available - old_available),
-                               'Daily reset to default limit (reserved kept)',
-                               :now
-                        FROM updated
-                        RETURNING 1
-                    )
+                    INSERT INTO limit_operations (user_id, operation_type, change_amount, created_at)
+                    SELECT user_id,
+                           'RESET',
+                           (new_available - old_available),
+                           :now
+                    FROM updated
+                    RETURNING 1
+                )
                     SELECT
                         (SELECT count(*) FROM target)   AS batch_size,
                         (SELECT count(*) FROM updated)  AS updated_users,

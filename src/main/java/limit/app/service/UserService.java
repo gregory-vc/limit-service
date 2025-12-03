@@ -1,42 +1,169 @@
 package limit.app.service;
 
+import limit.app.config.LimitServiceProperties;
+import limit.app.repository.LimitOperationRepository;
+import limit.app.repository.LimitReservationRepository;
+import limit.app.repository.UserLimitRepository;
 import limit.app.repository.UserRepository;
-import limit.domain.User;
+import limit.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Service
 @Transactional
 public class UserService {
-    private final UserRepository repo;
 
-    public UserService(UserRepository repo) {
-        this.repo = repo;
-    }
+    private final UserRepository userRepository;
+    private final UserLimitRepository userLimitRepository;
+    private final LimitReservationRepository reservationRepository;
+    private final LimitOperationRepository operationRepository;
+    private final LimitServiceProperties properties;
 
-    public User create(User user) {
-        return repo.save(user);
+    public UserService(UserRepository userRepository,
+                       UserLimitRepository userLimitRepository,
+                       LimitReservationRepository reservationRepository,
+                       LimitOperationRepository operationRepository,
+                       LimitServiceProperties properties) {
+        this.userRepository = userRepository;
+        this.userLimitRepository = userLimitRepository;
+        this.reservationRepository = reservationRepository;
+        this.operationRepository = operationRepository;
+        this.properties = properties;
     }
 
     @Transactional(readOnly = true)
     public Optional<User> findById(long id) {
-        return repo.findById(id);
+        return userRepository.findById(id);
     }
 
-    public User update(User patch) {
-        var user = repo.findById(patch.getId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found " + patch.getId()));
+    @Transactional
+    public LimitReservation reserveLimit(String externalUserId, BigDecimal amount) {
+        validateAmount(amount);
 
-        if (patch.getUsername() != null) {
-            user.setUsername(patch.getUsername());
+        var user = ensureUser(externalUserId);
+        var userLimit = ensureUserLimit(user);
+
+        BigDecimal newAvailable = userLimit.getAvailableLimit().subtract(amount);
+        if (newAvailable.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Insufficient available limit for reservation");
         }
 
-        return repo.save(user);
+        userLimit.setAvailableLimit(newAvailable);
+        userLimit.setReservedAmount(userLimit.getReservedAmount().add(amount));
+        userLimitRepository.save(userLimit);
+
+        OffsetDateTime expiresAt = OffsetDateTime.now().plus(properties.getReservationTtl());
+
+        var reservation = reservationRepository.save(
+                new LimitReservation(user, amount, LimitReservationStatus.RESERVED, expiresAt, null, null)
+        );
+
+        operationRepository.save(
+                new LimitOperation(
+                        user,
+                        reservation,
+                        LimitOperationType.RESERVE,
+                        amount.negate(),
+                        null
+                )
+        );
+
+        return reservation;
     }
 
-    public void deleteById(long id) {
-        repo.deleteById(id);
+    @Transactional
+    public LimitReservation confirmLimitAndDebit(Long reservationId) {
+        var reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Reservation %d not found".formatted(reservationId)));
+
+        if (reservation.getStatus() != LimitReservationStatus.RESERVED) {
+            throw new IllegalStateException("Reservation %d is not in RESERVED status".formatted(reservationId));
+        }
+
+        var userLimit = userLimitRepository.findById(reservation.getUser().getId())
+                .orElseThrow(() -> new IllegalStateException("User limit not found for user " + reservation.getUser().getId()));
+
+        if (userLimit.getReservedAmount().compareTo(reservation.getAmount()) < 0) {
+            throw new IllegalStateException("Reserved amount is insufficient to confirm reservation " + reservationId);
+        }
+
+        userLimit.setReservedAmount(userLimit.getReservedAmount().subtract(reservation.getAmount()));
+        userLimitRepository.save(userLimit);
+
+        reservation.setStatus(LimitReservationStatus.CONFIRMED);
+        reservationRepository.save(reservation);
+
+        operationRepository.save(
+                new LimitOperation(
+                        reservation.getUser(),
+                        reservation,
+                        LimitOperationType.DEBIT,
+                        reservation.getAmount().negate(),
+                        null
+                )
+        );
+
+        return reservation;
+    }
+
+    @Transactional
+    public LimitReservation cancelReservation(Long reservationId) {
+        var reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Reservation %d not found".formatted(reservationId)));
+
+        if (reservation.getStatus() != LimitReservationStatus.RESERVED) {
+            throw new IllegalStateException("Reservation %d cannot be cancelled from status %s".formatted(
+                    reservationId, reservation.getStatus()));
+        }
+
+        var userLimit = userLimitRepository.findById(reservation.getUser().getId())
+                .orElseThrow(() -> new IllegalStateException("User limit not found for user " + reservation.getUser().getId()));
+
+        userLimit.setReservedAmount(userLimit.getReservedAmount().subtract(reservation.getAmount()));
+        userLimit.setAvailableLimit(userLimit.getAvailableLimit().add(reservation.getAmount()));
+        userLimitRepository.save(userLimit);
+
+        reservation.setStatus(LimitReservationStatus.CANCELLED);
+        reservationRepository.save(reservation);
+
+        operationRepository.save(
+                new LimitOperation(
+                        reservation.getUser(),
+                        reservation,
+                        LimitOperationType.RELEASE,
+                        reservation.getAmount(),
+                        null
+                )
+        );
+
+        return reservation;
+    }
+
+    private User ensureUser(String externalUserId) {
+        return userRepository.findByExternalId(externalUserId)
+                .orElseGet(() -> userRepository.save(new User(externalUserId, null, null)));
+    }
+
+    private UserLimit ensureUserLimit(User user) {
+        return userLimitRepository.findById(user.getId())
+                .orElseGet(() -> userLimitRepository.save(
+                        new UserLimit(
+                                user,
+                                properties.getDefaultValue(),
+                                BigDecimal.ZERO,
+                                null,
+                                null
+                        )
+                ));
+    }
+
+    private void validateAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
     }
 }

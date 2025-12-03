@@ -3,15 +3,18 @@ package limit.app.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 
 @ConfigurationProperties(prefix = "limit")
-public class LimitResetProperties {
+public class LimitServiceProperties {
 
     private BigDecimal defaultValue;
 
     private String resetCron;
 
     private int resetBatchSize;
+
+    private Duration reservationTtl;
 
     public BigDecimal getDefaultValue() {
         return defaultValue;
@@ -35,5 +38,13 @@ public class LimitResetProperties {
 
     public void setResetBatchSize(int resetBatchSize) {
         this.resetBatchSize = resetBatchSize;
+    }
+
+    public Duration getReservationTtl() {
+        return reservationTtl;
+    }
+
+    public void setReservationTtl(Duration reservationTtl) {
+        this.reservationTtl = reservationTtl;
     }
 }
