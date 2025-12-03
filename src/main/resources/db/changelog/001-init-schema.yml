@@ -1,0 +1,246 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-limit-schema
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: external_id
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: display_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: user_limits
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: available_limit
+                  type: DECIMAL(19,2)
+                  defaultValueNumeric: 100000.00
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reserved_amount
+                  type: DECIMAL(19,2)
+                  defaultValueNumeric: 0.00
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_reset_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: user_limits
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_user_limits_users
+            onDelete: CASCADE
+
+        - addCheckConstraint:
+            tableName: user_limits
+            constraintName: ck_user_limits_non_negative
+            condition: "available_limit >= 0 AND reserved_amount >= 0"
+
+        - createTable:
+            tableName: limit_reservations
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: limit_reservations
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_limit_reservations_users
+            onDelete: CASCADE
+
+        - addCheckConstraint:
+            tableName: limit_reservations
+            constraintName: ck_limit_reservations_positive_amount
+            condition: amount > 0
+
+        - addCheckConstraint:
+            tableName: limit_reservations
+            constraintName: ck_limit_reservations_status
+            condition: "status IN ('RESERVED','CONFIRMED','CANCELLED','RELEASED')"
+
+        - createIndex:
+            tableName: limit_reservations
+            indexName: idx_limit_reservations_user_status
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: status
+
+        - createTable:
+            tableName: limit_operations
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reservation_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: related_operation_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: operation_type
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: change_amount
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: limit_operations
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_limit_operations_users
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: limit_operations
+            baseColumnNames: reservation_id
+            referencedTableName: limit_reservations
+            referencedColumnNames: id
+            constraintName: fk_limit_operations_reservations
+            onDelete: SET NULL
+
+        - addForeignKeyConstraint:
+            baseTableName: limit_operations
+            baseColumnNames: related_operation_id
+            referencedTableName: limit_operations
+            referencedColumnNames: id
+            constraintName: fk_limit_operations_related
+            onDelete: SET NULL
+
+        - addCheckConstraint:
+            tableName: limit_operations
+            constraintName: ck_limit_operations_type
+            condition: "operation_type IN ('RESET','RESERVE','DEBIT','CREDIT','RELEASE')"
+
+        - addCheckConstraint:
+            tableName: limit_operations
+            constraintName: ck_limit_operations_status
+            condition: "status IN ('APPLIED','PENDING','REVERSED')"
+
+        - addCheckConstraint:
+            tableName: limit_operations
+            constraintName: ck_limit_operations_change_amount_nonzero
+            condition: change_amount <> 0
+
+        - createIndex:
+            tableName: limit_operations
+            indexName: idx_limit_operations_user
+            columns:
+              - column:
+                  name: user_id

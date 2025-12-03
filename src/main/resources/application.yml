@@ -1,0 +1,30 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /limit
+
+spring:
+  application:
+    name: limit
+  thymeleaf:
+    check-template-location: false
+  datasource:
+    url: jdbc:postgresql://localhost:5432/payment_db
+    username: payment_user
+    password: payment_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 2
+      max-lifetime: 1800000
+      validation-timeout: 5000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml
+
+limit:
+  default-value: 100000.00
+  reset-cron: "0 0 0 * * *"
+  reset-batch-size: 10000

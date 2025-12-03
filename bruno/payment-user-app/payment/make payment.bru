@@ -1,0 +1,20 @@
+meta {
+  name: make payment
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:8081/payment/api/v1/users/product/1?amount=10000
+  body: none
+  auth: inherit
+}
+
+params:query {
+  amount: 10000
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
