@@ -59,4 +59,12 @@ public class LimitServiceProperties {
     public void setReservationTtl(Duration reservationTtl) {
         this.reservationTtl = reservationTtl;
     }
+
+    public String getExpireCron() {
+        return expireCron;
+    }
+
+    public void setExpireCron(String expireCron) {
+        this.expireCron = expireCron;
+    }
 }

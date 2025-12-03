@@ -45,6 +45,7 @@ public class UserService {
 
     public LimitReservation reserveLimit(String externalUserId, BigDecimal amount, String requestId) {
         validateAmount(amount);
+        validateExternalUserId(externalUserId);
         if (requestId == null || requestId.isBlank()) {
             throw new InvalidRequestException("requestId must be provided");
         }
@@ -64,6 +65,8 @@ public class UserService {
 
     @Transactional
     public LimitReservation confirmLimitAndDebit(Long reservationId) {
+        validateReservationId(reservationId);
+
         var reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new ReservationNotFoundException("Reservation %d not found".formatted(reservationId)));
 
@@ -99,6 +102,8 @@ public class UserService {
 
     @Transactional
     public LimitReservation cancelReservation(Long reservationId) {
+        validateReservationId(reservationId);
+
         var reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new ReservationNotFoundException("Reservation %d not found".formatted(reservationId)));
 
@@ -165,6 +170,18 @@ public class UserService {
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidRequestException("Amount must be positive");
+        }
+    }
+
+    private void validateExternalUserId(String externalUserId) {
+        if (externalUserId == null || externalUserId.isBlank()) {
+            throw new InvalidRequestException("externalUserId must be provided");
+        }
+    }
+
+    private void validateReservationId(Long reservationId) {
+        if (reservationId == null || reservationId <= 0) {
+            throw new InvalidRequestException("reservationId must be positive");
         }
     }
 
