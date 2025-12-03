@@ -14,7 +14,7 @@ public class User {
     private String externalId;
     @Column(name = "display_name")
     private String displayName;
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
     protected User() {

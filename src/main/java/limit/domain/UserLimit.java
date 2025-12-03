@@ -24,21 +24,25 @@ public class UserLimit {
     @Column(name = "reserved_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal reservedAmount;
 
-    @Column(name = "last_reset_at", nullable = false)
-    private OffsetDateTime lastResetAt;
-
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at", nullable = false, insertable = false)
     private OffsetDateTime updatedAt;
+
+    @Column(name = "last_reset_token")
+    private String lastResetToken;
 
     protected UserLimit() {
     }
 
-    public UserLimit(User user, BigDecimal availableLimit, BigDecimal reservedAmount, OffsetDateTime lastResetAt, OffsetDateTime updatedAt) {
+    public UserLimit(User user,
+                     BigDecimal availableLimit,
+                     BigDecimal reservedAmount,
+                     String lastResetToken,
+                     OffsetDateTime updatedAt) {
         this.user = user;
         this.userId = user.getId();
         this.availableLimit = availableLimit;
         this.reservedAmount = reservedAmount;
-        this.lastResetAt = lastResetAt;
+        this.lastResetToken = lastResetToken;
         this.updatedAt = updatedAt;
     }
 
@@ -66,19 +70,19 @@ public class UserLimit {
         this.reservedAmount = reservedAmount;
     }
 
-    public OffsetDateTime getLastResetAt() {
-        return lastResetAt;
-    }
-
-    public void setLastResetAt(OffsetDateTime lastResetAt) {
-        this.lastResetAt = lastResetAt;
-    }
-
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
 
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getLastResetToken() {
+        return lastResetToken;
+    }
+
+    public void setLastResetToken(String lastResetToken) {
+        this.lastResetToken = lastResetToken;
     }
 }

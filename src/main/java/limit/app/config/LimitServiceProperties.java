@@ -14,6 +14,8 @@ public class LimitServiceProperties {
 
     private int resetBatchSize;
 
+    private Duration resetWait;
+
     private Duration reservationTtl;
 
     private String expireCron;
@@ -40,6 +42,14 @@ public class LimitServiceProperties {
 
     public void setResetBatchSize(int resetBatchSize) {
         this.resetBatchSize = resetBatchSize;
+    }
+
+    public Duration getResetWait() {
+        return resetWait;
+    }
+
+    public void setResetWait(Duration resetWait) {
+        this.resetWait = resetWait;
     }
 
     public Duration getReservationTtl() {

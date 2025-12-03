@@ -28,7 +28,7 @@ public class LimitOperation {
     @Column(name = "change_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal changeAmount;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
     protected LimitOperation() {

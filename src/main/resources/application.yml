@@ -28,5 +28,6 @@ limit:
   default-value: 100000.00
   reset-cron: "0 0 0 * * *"
   reset-batch-size: 10000
+  reset-wait: PT0.1S
   reservation-ttl: PT1H
   expire-cron: "0 */10 * * * *" # every 10 minutes

@@ -52,17 +52,16 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: last_reset_at
-                  type: TIMESTAMP WITH TIME ZONE
-                  defaultValueComputed: CURRENT_TIMESTAMP
-                  constraints:
-                    nullable: false
-              - column:
                   name: updated_at
                   type: TIMESTAMP WITH TIME ZONE
                   defaultValueComputed: CURRENT_TIMESTAMP
                   constraints:
                     nullable: false
+              - column:
+                  name: last_reset_token
+                  type: UUID
+                  constraints:
+                    nullable: true
 
         - addForeignKeyConstraint:
             baseTableName: user_limits
@@ -222,3 +221,34 @@ databaseChangeLog:
             columns:
               - column:
                   name: user_id
+
+  - changeSet:
+      id: 001-updated-at-triggers
+      changes:
+        - createProcedure:
+            dbms: postgresql
+            procedureName: updated_at_touch
+            replaceIfExists: true
+            procedureBody: |
+              CREATE OR REPLACE FUNCTION updated_at_touch() RETURNS trigger AS $$
+              BEGIN
+                NEW.updated_at := CURRENT_TIMESTAMP;
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+        - createTrigger:
+            dbms: postgresql
+            triggerName: trg_user_limits_updated_at
+            tableName: user_limits
+            timing: BEFORE
+            triggerOperation: UPDATE
+            forEachRow: true
+            procedureName: updated_at_touch
+        - createTrigger:
+            dbms: postgresql
+            triggerName: trg_limit_reservations_updated_at
+            tableName: limit_reservations
+            timing: BEFORE
+            triggerOperation: UPDATE
+            forEachRow: true
+            procedureName: updated_at_touch
