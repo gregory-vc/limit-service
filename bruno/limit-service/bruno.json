@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "name": "payment-user-app",
+  "name": "limit-service",
   "type": "collection",
   "ignore": [
     "node_modules",

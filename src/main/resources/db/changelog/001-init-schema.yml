@@ -1,6 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 001-create-limit-schema
+      author: gregory
       changes:
         - createTable:
             tableName: users
@@ -12,12 +13,6 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
                     nullable: false
-              - column:
-                  name: external_id
-                  type: VARCHAR(64)
-                  constraints:
-                    nullable: false
-                    unique: true
               - column:
                   name: display_name
                   type: VARCHAR(255)
@@ -71,10 +66,10 @@ databaseChangeLog:
             constraintName: fk_user_limits_users
             onDelete: CASCADE
 
-        - addCheckConstraint:
-            tableName: user_limits
-            constraintName: ck_user_limits_non_negative
-            condition: "available_limit >= 0 AND reserved_amount >= 0"
+        - sql:
+            sql: |
+              ALTER TABLE user_limits
+              ADD CONSTRAINT ck_user_limits_non_negative CHECK (available_limit >= 0 AND reserved_amount >= 0);
 
         - createTable:
             tableName: limit_reservations
@@ -133,15 +128,15 @@ databaseChangeLog:
             constraintName: fk_limit_reservations_users
             onDelete: CASCADE
 
-        - addCheckConstraint:
-            tableName: limit_reservations
-            constraintName: ck_limit_reservations_positive_amount
-            condition: amount > 0
+        - sql:
+            sql: |
+              ALTER TABLE limit_reservations
+              ADD CONSTRAINT ck_limit_reservations_positive_amount CHECK (amount > 0);
 
-        - addCheckConstraint:
-            tableName: limit_reservations
-            constraintName: ck_limit_reservations_status
-            condition: "status IN ('RESERVED','CONFIRMED','CANCELLED','RELEASED')"
+        - sql:
+            sql: |
+              ALTER TABLE limit_reservations
+              ADD CONSTRAINT ck_limit_reservations_status CHECK (status IN ('RESERVED','CONFIRMED','CANCELLED','RELEASED'));
 
         - createIndex:
             tableName: limit_reservations
@@ -205,15 +200,15 @@ databaseChangeLog:
             constraintName: fk_limit_operations_reservations
             onDelete: SET NULL
 
-        - addCheckConstraint:
-            tableName: limit_operations
-            constraintName: ck_limit_operations_type
-            condition: "operation_type IN ('RESET','RESERVE','DEBIT','RELEASE')"
+        - sql:
+            sql: |
+              ALTER TABLE limit_operations
+              ADD CONSTRAINT ck_limit_operations_type CHECK (operation_type IN ('RESET','RESERVE','DEBIT','RELEASE'));
 
-        - addCheckConstraint:
-            tableName: limit_operations
-            constraintName: ck_limit_operations_change_amount_nonzero
-            condition: change_amount <> 0
+        - sql:
+            sql: |
+              ALTER TABLE limit_operations
+              ADD CONSTRAINT ck_limit_operations_change_amount_nonzero CHECK (change_amount <> 0);
 
         - createIndex:
             tableName: limit_operations
@@ -224,6 +219,7 @@ databaseChangeLog:
 
   - changeSet:
       id: 001-updated-at-triggers
+      author: gregory
       changes:
         - createProcedure:
             dbms: postgresql
@@ -236,19 +232,17 @@ databaseChangeLog:
                 RETURN NEW;
               END;
               $$ LANGUAGE plpgsql;
-        - createTrigger:
+        - sql:
             dbms: postgresql
-            triggerName: trg_user_limits_updated_at
-            tableName: user_limits
-            timing: BEFORE
-            triggerOperation: UPDATE
-            forEachRow: true
-            procedureName: updated_at_touch
-        - createTrigger:
+            sql: |
+              CREATE TRIGGER trg_user_limits_updated_at
+              BEFORE UPDATE ON user_limits
+              FOR EACH ROW
+              EXECUTE FUNCTION updated_at_touch();
+        - sql:
             dbms: postgresql
-            triggerName: trg_limit_reservations_updated_at
-            tableName: limit_reservations
-            timing: BEFORE
-            triggerOperation: UPDATE
-            forEachRow: true
-            procedureName: updated_at_touch
+            sql: |
+              CREATE TRIGGER trg_limit_reservations_updated_at
+              BEFORE UPDATE ON limit_reservations
+              FOR EACH ROW
+              EXECUTE FUNCTION updated_at_touch();

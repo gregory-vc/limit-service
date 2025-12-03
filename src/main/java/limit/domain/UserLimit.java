@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "user_limits")
@@ -24,11 +25,11 @@ public class UserLimit {
     @Column(name = "reserved_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal reservedAmount;
 
-    @Column(name = "updated_at", nullable = false, insertable = false)
+    @Column(name = "updated_at", nullable = true, insertable = false, updatable = false)
     private OffsetDateTime updatedAt;
 
-    @Column(name = "last_reset_token")
-    private String lastResetToken;
+    @Column(name = "last_reset_token", columnDefinition = "uuid")
+    private UUID lastResetToken;
 
     protected UserLimit() {
     }
@@ -36,10 +37,9 @@ public class UserLimit {
     public UserLimit(User user,
                      BigDecimal availableLimit,
                      BigDecimal reservedAmount,
-                     String lastResetToken,
+                     UUID lastResetToken,
                      OffsetDateTime updatedAt) {
         this.user = user;
-        this.userId = user.getId();
         this.availableLimit = availableLimit;
         this.reservedAmount = reservedAmount;
         this.lastResetToken = lastResetToken;
@@ -78,11 +78,11 @@ public class UserLimit {
         this.updatedAt = updatedAt;
     }
 
-    public String getLastResetToken() {
+    public UUID getLastResetToken() {
         return lastResetToken;
     }
 
-    public void setLastResetToken(String lastResetToken) {
+    public void setLastResetToken(UUID lastResetToken) {
         this.lastResetToken = lastResetToken;
     }
 }

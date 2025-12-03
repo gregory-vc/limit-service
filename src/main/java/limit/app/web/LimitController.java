@@ -22,19 +22,19 @@ public class LimitController {
     @PostMapping("/reservations")
     @ResponseStatus(HttpStatus.CREATED)
     public LimitReservationResponse reserve(@RequestBody ReserveLimitRequest request) {
-        var reservation = userService.reserveLimit(request.externalUserId(), request.amount(), request.requestId());
-        return reservationMapper.toResponse(reservation);
+        var result = userService.reserveLimit(request.userId(), request.amount(), request.requestId());
+        return reservationMapper.toResponse(result.reservation(), result.availableLimit());
     }
 
     @PostMapping("/reservations/{id}/confirm")
     public LimitReservationResponse confirm(@PathVariable("id") Long id) {
-        var reservation = userService.confirmLimitAndDebit(id);
-        return reservationMapper.toResponse(reservation);
+        var result = userService.confirmLimitAndDebit(id);
+        return reservationMapper.toResponse(result.reservation(), result.availableLimit());
     }
 
     @PostMapping("/reservations/{id}/cancel")
     public LimitReservationResponse cancel(@PathVariable("id") Long id) {
-        var reservation = userService.cancelReservation(id);
-        return reservationMapper.toResponse(reservation);
+        var result = userService.cancelReservation(id);
+        return reservationMapper.toResponse(result.reservation(), result.availableLimit());
     }
 }

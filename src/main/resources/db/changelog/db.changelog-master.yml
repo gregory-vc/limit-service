@@ -2,6 +2,3 @@ databaseChangeLog:
   - include:
       file: 001-init-schema.yml
       relativeToChangelogFile: true
-  - include:
-      file: 002-sample-data.yml
-      relativeToChangelogFile: true

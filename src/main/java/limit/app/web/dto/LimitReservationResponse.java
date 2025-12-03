@@ -8,9 +8,9 @@ import java.time.OffsetDateTime;
 public record LimitReservationResponse(
         Long id,
         Long userId,
-        String externalUserId,
         BigDecimal amount,
         LimitReservationStatus status,
-        OffsetDateTime expiresAt
+        OffsetDateTime expiresAt,
+        BigDecimal availableLimit
 ) {
 }

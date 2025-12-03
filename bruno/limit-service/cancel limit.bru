@@ -1,0 +1,20 @@
+meta {
+  name: cancel limit
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://localhost:8082/limit/api/v1/limits/reservations/2/cancel
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

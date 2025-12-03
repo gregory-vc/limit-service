@@ -13,6 +13,9 @@ public interface LimitReservationRepository extends JpaRepository<LimitReservati
 
     Optional<LimitReservation> findByRequestId(String requestId);
 
+    @Query("select lr from LimitReservation lr join fetch lr.user where lr.requestId = :requestId")
+    Optional<LimitReservation> findWithUserByRequestId(@Param("requestId") String requestId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select lr from LimitReservation lr where lr.id = :id")
     Optional<LimitReservation> findByIdForUpdate(@Param("id") Long id);

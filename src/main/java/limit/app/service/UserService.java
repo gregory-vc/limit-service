@@ -13,7 +13,6 @@ import limit.app.repository.UserRepository;
 import limit.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
@@ -27,44 +26,33 @@ public class UserService {
     private final LimitReservationRepository reservationRepository;
     private final LimitOperationRepository operationRepository;
     private final LimitServiceProperties properties;
-    private final TransactionTemplate transactionTemplate;
 
     public UserService(UserRepository userRepository,
                        UserLimitRepository userLimitRepository,
                        LimitReservationRepository reservationRepository,
                        LimitOperationRepository operationRepository,
-                       LimitServiceProperties properties,
-                       TransactionTemplate transactionTemplate) {
+                       LimitServiceProperties properties) {
         this.userRepository = userRepository;
         this.userLimitRepository = userLimitRepository;
         this.reservationRepository = reservationRepository;
         this.operationRepository = operationRepository;
         this.properties = properties;
-        this.transactionTemplate = transactionTemplate;
     }
 
-    public LimitReservation reserveLimit(String externalUserId, BigDecimal amount, String requestId) {
+    @Transactional
+    public ReservationResult reserveLimit(Long userId, BigDecimal amount, String requestId) {
         validateAmount(amount);
-        validateExternalUserId(externalUserId);
+        validateUserId(userId);
         if (requestId == null || requestId.isBlank()) {
             throw new InvalidRequestException("requestId must be provided");
         }
 
-        var existing = reservationRepository.findByRequestId(requestId);
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-
-        try {
-            return transactionTemplate.execute(status -> createReservation(externalUserId, amount, requestId));
-        } catch (DataIntegrityViolationException e) {
-            return reservationRepository.findByRequestId(requestId)
-                    .orElseThrow(() -> new InvalidRequestException("Failed to create reservation for requestId " + requestId));
-        }
+        var existing = reservationRepository.findWithUserByRequestId(requestId);
+        return existing.map(this::fetchWithLock).orElseGet(() -> createReservation(userId, amount, requestId));
     }
 
     @Transactional
-    public LimitReservation confirmLimitAndDebit(Long reservationId) {
+    public ReservationResult confirmLimitAndDebit(Long reservationId) {
         validateReservationId(reservationId);
 
         var reservation = reservationRepository.findByIdForUpdate(reservationId)
@@ -97,11 +85,11 @@ public class UserService {
                 )
         );
 
-        return reservation;
+        return new ReservationResult(reservation, userLimit.getAvailableLimit());
     }
 
     @Transactional
-    public LimitReservation cancelReservation(Long reservationId) {
+    public ReservationResult cancelReservation(Long reservationId) {
         validateReservationId(reservationId);
 
         var reservation = reservationRepository.findByIdForUpdate(reservationId)
@@ -132,17 +120,18 @@ public class UserService {
                 )
         );
 
-        return reservation;
+        return new ReservationResult(reservation, userLimit.getAvailableLimit());
     }
 
-    private User ensureUser(String externalUserId) {
-        return userRepository.findWithLockingByExternalId(externalUserId)
+    private User ensureUser(Long userId) {
+        return userRepository.findByIdForUpdate(userId)
                 .orElseGet(() -> {
+                    var user = new User(null, null);
                     try {
-                        return userRepository.saveAndFlush(new User(externalUserId, null, null));
+                        return userRepository.saveAndFlush(user);
                     } catch (DataIntegrityViolationException e) {
-                        return userRepository.findWithLockingByExternalId(externalUserId)
-                                .orElseThrow(() -> new InvalidRequestException("Failed to create user " + externalUserId));
+                        return userRepository.findByIdForUpdate(userId)
+                                .orElseThrow(() -> new InvalidRequestException("Failed to create user " + userId));
                     }
                 });
     }
@@ -173,9 +162,9 @@ public class UserService {
         }
     }
 
-    private void validateExternalUserId(String externalUserId) {
-        if (externalUserId == null || externalUserId.isBlank()) {
-            throw new InvalidRequestException("externalUserId must be provided");
+    private void validateUserId(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new InvalidRequestException("userId must be positive");
         }
     }
 
@@ -185,8 +174,8 @@ public class UserService {
         }
     }
 
-    private LimitReservation createReservation(String externalUserId, BigDecimal amount, String requestId) {
-        var user = ensureUser(externalUserId);
+    private ReservationResult createReservation(Long userId, BigDecimal amount, String requestId) {
+        var user = ensureUser(userId);
         var userLimit = ensureUserLimitWithLock(user);
 
         BigDecimal newAvailable = userLimit.getAvailableLimit().subtract(amount);
@@ -214,6 +203,14 @@ public class UserService {
                 )
         );
 
-        return reservation;
+        return new ReservationResult(reservation, userLimit.getAvailableLimit());
     }
+
+    private ReservationResult fetchWithLock(LimitReservation reservation) {
+        var userLimit = userLimitRepository.findByUserIdForUpdate(reservation.getUser().getId())
+                .orElseThrow(() -> new UserLimitNotFoundException("User limit not found for user " + reservation.getUser().getId()));
+        return new ReservationResult(reservation, userLimit.getAvailableLimit());
+    }
+
+    public record ReservationResult(LimitReservation reservation, BigDecimal availableLimit) {}
 }

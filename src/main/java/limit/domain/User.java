@@ -10,8 +10,6 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "external_id", nullable = false, unique = true, length = 64)
-    private String externalId;
     @Column(name = "display_name")
     private String displayName;
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
@@ -20,8 +18,7 @@ public class User {
     protected User() {
     }
 
-    public User(String externalId, String displayName, OffsetDateTime createdAt) {
-        this.externalId = externalId;
+    public User(String displayName, OffsetDateTime createdAt) {
         this.displayName = displayName;
         this.createdAt = createdAt;
     }
@@ -30,12 +27,8 @@ public class User {
         return id;
     }
 
-    public String getUsername() {
-        return externalId;
-    }
-
-    public void setUsername(String username) {
-        this.externalId = username;
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getDisplayName() {
