@@ -16,6 +16,8 @@ public class LimitServiceProperties {
 
     private Duration reservationTtl;
 
+    private String expireCron;
+
     public BigDecimal getDefaultValue() {
         return defaultValue;
     }

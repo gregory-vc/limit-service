@@ -44,18 +44,21 @@ databaseChangeLog:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-001')"}
               - column: {name: amount, valueNumeric: 15000.00}
               - column: {name: status, value: "RESERVED"}
+              - column: {name: request_id, value: "req-001"}
         - insert:
             tableName: limit_reservations
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-002')"}
               - column: {name: amount, valueNumeric: 20000.00}
               - column: {name: status, value: "CONFIRMED"}
+              - column: {name: request_id, value: "req-002"}
         - insert:
             tableName: limit_reservations
             columns:
               - column: {name: user_id, valueComputed: "(SELECT id FROM users WHERE external_id = 'u-003')"}
               - column: {name: amount, valueNumeric: 5000.00}
               - column: {name: status, value: "RELEASED"}
+              - column: {name: request_id, value: "req-003"}
 
         - insert:
             tableName: limit_operations

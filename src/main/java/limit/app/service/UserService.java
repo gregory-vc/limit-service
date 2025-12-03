@@ -1,6 +1,7 @@
 package limit.app.service;
 
 import limit.app.config.LimitServiceProperties;
+import limit.app.exception.*;
 import limit.app.repository.LimitOperationRepository;
 import limit.app.repository.LimitReservationRepository;
 import limit.app.repository.UserLimitRepository;
@@ -35,21 +36,24 @@ public class UserService {
         this.properties = properties;
     }
 
-    @Transactional(readOnly = true)
-    public Optional<User> findById(long id) {
-        return userRepository.findById(id);
-    }
-
     @Transactional
-    public LimitReservation reserveLimit(String externalUserId, BigDecimal amount) {
+    public LimitReservation reserveLimit(String externalUserId, BigDecimal amount, String requestId) {
         validateAmount(amount);
+        if (requestId == null || requestId.isBlank()) {
+            throw new InvalidRequestException("requestId must be provided");
+        }
+
+        var existing = reservationRepository.findByRequestId(requestId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
 
         var user = ensureUser(externalUserId);
         var userLimit = ensureUserLimit(user);
 
         BigDecimal newAvailable = userLimit.getAvailableLimit().subtract(amount);
         if (newAvailable.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Insufficient available limit for reservation");
+            throw new InsufficientLimitException("Insufficient available limit for reservation");
         }
 
         userLimit.setAvailableLimit(newAvailable);
@@ -59,7 +63,7 @@ public class UserService {
         OffsetDateTime expiresAt = OffsetDateTime.now().plus(properties.getReservationTtl());
 
         var reservation = reservationRepository.save(
-                new LimitReservation(user, amount, LimitReservationStatus.RESERVED, expiresAt, null, null)
+                new LimitReservation(user, amount, LimitReservationStatus.RESERVED, requestId, expiresAt, null, null)
         );
 
         operationRepository.save(
@@ -78,17 +82,17 @@ public class UserService {
     @Transactional
     public LimitReservation confirmLimitAndDebit(Long reservationId) {
         var reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation %d not found".formatted(reservationId)));
+                .orElseThrow(() -> new ReservationNotFoundException("Reservation %d not found".formatted(reservationId)));
 
         if (reservation.getStatus() != LimitReservationStatus.RESERVED) {
-            throw new IllegalStateException("Reservation %d is not in RESERVED status".formatted(reservationId));
+            throw new ReservationInvalidStateException("Reservation %d is not in RESERVED status".formatted(reservationId));
         }
 
         var userLimit = userLimitRepository.findById(reservation.getUser().getId())
-                .orElseThrow(() -> new IllegalStateException("User limit not found for user " + reservation.getUser().getId()));
+                .orElseThrow(() -> new UserLimitNotFoundException("User limit not found for user " + reservation.getUser().getId()));
 
         if (userLimit.getReservedAmount().compareTo(reservation.getAmount()) < 0) {
-            throw new IllegalStateException("Reserved amount is insufficient to confirm reservation " + reservationId);
+            throw new ReservationInvalidStateException("Reserved amount is insufficient to confirm reservation " + reservationId);
         }
 
         userLimit.setReservedAmount(userLimit.getReservedAmount().subtract(reservation.getAmount()));
@@ -113,15 +117,15 @@ public class UserService {
     @Transactional
     public LimitReservation cancelReservation(Long reservationId) {
         var reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation %d not found".formatted(reservationId)));
+                .orElseThrow(() -> new ReservationNotFoundException("Reservation %d not found".formatted(reservationId)));
 
         if (reservation.getStatus() != LimitReservationStatus.RESERVED) {
-            throw new IllegalStateException("Reservation %d cannot be cancelled from status %s".formatted(
+            throw new ReservationInvalidStateException("Reservation %d cannot be cancelled from status %s".formatted(
                     reservationId, reservation.getStatus()));
         }
 
         var userLimit = userLimitRepository.findById(reservation.getUser().getId())
-                .orElseThrow(() -> new IllegalStateException("User limit not found for user " + reservation.getUser().getId()));
+                .orElseThrow(() -> new UserLimitNotFoundException("User limit not found for user " + reservation.getUser().getId()));
 
         userLimit.setReservedAmount(userLimit.getReservedAmount().subtract(reservation.getAmount()));
         userLimit.setAvailableLimit(userLimit.getAvailableLimit().add(reservation.getAmount()));
@@ -163,7 +167,7 @@ public class UserService {
 
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be positive");
+            throw new InvalidRequestException("Amount must be positive");
         }
     }
 }

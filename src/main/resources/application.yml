@@ -29,3 +29,4 @@ limit:
   reset-cron: "0 0 0 * * *"
   reset-batch-size: 10000
   reservation-ttl: PT1H
+  expire-cron: "0 */10 * * * *" # every 10 minutes

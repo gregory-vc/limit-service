@@ -24,7 +24,7 @@ public class LimitResetScheduler {
         this.properties = properties;
     }
 
-    @Scheduled(cron = "${limit.reset-cron:0 0 0 * * *}")
+    @Scheduled(cron = "${limit.reset-cron}")
     public void resetAllLimits() {
         BigDecimal defaultLimit = properties.getDefaultValue();
         OffsetDateTime now = OffsetDateTime.now();

@@ -24,6 +24,9 @@ public class LimitReservation {
     @Column(name = "status", nullable = false, length = 16)
     private LimitReservationStatus status;
 
+    @Column(name = "request_id", nullable = false, length = 128, unique = true)
+    private String requestId;
+
     @Column(name = "expires_at")
     private OffsetDateTime expiresAt;
 
@@ -39,12 +42,14 @@ public class LimitReservation {
     public LimitReservation(User user,
                             BigDecimal amount,
                             LimitReservationStatus status,
+                            String requestId,
                             OffsetDateTime expiresAt,
                             OffsetDateTime createdAt,
                             OffsetDateTime updatedAt) {
         this.user = user;
         this.amount = amount;
         this.status = status;
+        this.requestId = requestId;
         this.expiresAt = expiresAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -68,6 +73,10 @@ public class LimitReservation {
 
     public void setStatus(LimitReservationStatus status) {
         this.status = status;
+    }
+
+    public String getRequestId() {
+        return requestId;
     }
 
     public OffsetDateTime getExpiresAt() {
