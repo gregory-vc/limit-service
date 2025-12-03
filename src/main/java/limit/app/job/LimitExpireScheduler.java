@@ -33,6 +33,7 @@ public class LimitExpireScheduler {
             }
 
             try {
+                log.info("Expire reservations job started");
                 var stats = connectionTemplate.queryForMap(
                         """
                         WITH expired AS (
@@ -79,7 +80,7 @@ public class LimitExpireScheduler {
                 if (expired > 0) {
                     log.info("Expired reservations processed: {}, limits updated {}, reservations {}, operations {}", expired, updatedLimits, updatedRes, ops);
                 } else {
-                    log.debug("No expired reservations at CURRENT_TIMESTAMP");
+                    log.info("No expired reservations at CURRENT_TIMESTAMP");
                 }
             } finally {
                 releaseLock(connectionTemplate);

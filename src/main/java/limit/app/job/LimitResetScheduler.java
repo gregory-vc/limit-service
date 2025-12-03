@@ -42,7 +42,7 @@ public class LimitResetScheduler {
 
             try {
                 BigDecimal defaultLimit = properties.getDefaultValue();
-                String runToken = UUID.randomUUID().toString();
+            UUID runToken = UUID.randomUUID();
                 Duration waitDuration = properties.getResetWait();
 
                 final int batchSize = properties.getResetBatchSize();
@@ -60,8 +60,8 @@ public class LimitResetScheduler {
                             WITH target AS (
                                 SELECT user_id, available_limit
                                 FROM user_limits
-                                WHERE last_reset_token IS DISTINCT FROM :runToken
-                                  AND available_limit <> GREATEST(:defaultLimit - reserved_amount, 0)
+                            WHERE last_reset_token IS DISTINCT FROM :runToken
+                              AND available_limit <> GREATEST(:defaultLimit - reserved_amount, 0)
                                 ORDER BY user_id
                                 LIMIT :batchSize
                                 FOR UPDATE SKIP LOCKED
