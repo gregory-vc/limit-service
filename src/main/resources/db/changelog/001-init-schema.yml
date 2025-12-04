@@ -1,0 +1,248 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-limit-schema
+      author: gregory
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: display_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: user_limits
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: available_limit
+                  type: DECIMAL(19,2)
+                  defaultValueNumeric: 100000.00
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reserved_amount
+                  type: DECIMAL(19,2)
+                  defaultValueNumeric: 0.00
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_reset_token
+                  type: UUID
+                  constraints:
+                    nullable: true
+
+        - addForeignKeyConstraint:
+            baseTableName: user_limits
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_user_limits_users
+            onDelete: CASCADE
+
+        - sql:
+            sql: |
+              ALTER TABLE user_limits
+              ADD CONSTRAINT ck_user_limits_non_negative CHECK (available_limit >= 0 AND reserved_amount >= 0);
+
+        - createTable:
+            tableName: limit_reservations
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: limit_reservations
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_limit_reservations_users
+            onDelete: CASCADE
+
+        - sql:
+            sql: |
+              ALTER TABLE limit_reservations
+              ADD CONSTRAINT ck_limit_reservations_positive_amount CHECK (amount > 0);
+
+        - sql:
+            sql: |
+              ALTER TABLE limit_reservations
+              ADD CONSTRAINT ck_limit_reservations_status CHECK (status IN ('RESERVED','CONFIRMED','CANCELLED','RELEASED'));
+
+        - createIndex:
+            tableName: limit_reservations
+            indexName: idx_limit_reservations_user_status
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: status
+
+        - createTable:
+            tableName: limit_operations
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reservation_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: operation_type
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: change_amount
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: limit_operations
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_limit_operations_users
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: limit_operations
+            baseColumnNames: reservation_id
+            referencedTableName: limit_reservations
+            referencedColumnNames: id
+            constraintName: fk_limit_operations_reservations
+            onDelete: SET NULL
+
+        - sql:
+            sql: |
+              ALTER TABLE limit_operations
+              ADD CONSTRAINT ck_limit_operations_type CHECK (operation_type IN ('RESET','RESERVE','DEBIT','RELEASE'));
+
+        - sql:
+            sql: |
+              ALTER TABLE limit_operations
+              ADD CONSTRAINT ck_limit_operations_change_amount_nonzero CHECK (change_amount <> 0);
+
+        - createIndex:
+            tableName: limit_operations
+            indexName: idx_limit_operations_user
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: 001-updated-at-triggers
+      author: gregory
+      changes:
+        - createProcedure:
+            dbms: postgresql
+            procedureName: updated_at_touch
+            replaceIfExists: true
+            procedureBody: |
+              CREATE OR REPLACE FUNCTION updated_at_touch() RETURNS trigger AS $$
+              BEGIN
+                NEW.updated_at := CURRENT_TIMESTAMP;
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE TRIGGER trg_user_limits_updated_at
+              BEFORE UPDATE ON user_limits
+              FOR EACH ROW
+              EXECUTE FUNCTION updated_at_touch();
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE TRIGGER trg_limit_reservations_updated_at
+              BEFORE UPDATE ON limit_reservations
+              FOR EACH ROW
+              EXECUTE FUNCTION updated_at_touch();

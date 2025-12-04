@@ -1,0 +1,28 @@
+meta {
+  name: reserve limit
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:8082/limit/api/v1/limits/reservations
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "userId": 1,
+    "amount": 5000,
+    "requestId": "req-bruno-002"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
