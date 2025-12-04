@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/limits")
+@RequestMapping("/api/v1/limits/reservations")
 public class LimitController {
 
     private final UserService userService;
@@ -19,20 +19,20 @@ public class LimitController {
         this.reservationMapper = reservationMapper;
     }
 
-    @PostMapping("/reservations")
+    @PostMapping("/")
     @ResponseStatus(HttpStatus.CREATED)
     public LimitReservationResponse reserve(@RequestBody ReserveLimitRequest request) {
         var result = userService.reserveLimit(request.userId(), request.amount(), request.requestId());
         return reservationMapper.toResponse(result.reservation(), result.availableLimit());
     }
 
-    @PostMapping("/reservations/{id}/confirm")
+    @PostMapping("/{id}/confirm")
     public LimitReservationResponse confirm(@PathVariable("id") Long id) {
         var result = userService.confirmLimitAndDebit(id);
         return reservationMapper.toResponse(result.reservation(), result.availableLimit());
     }
 
-    @PostMapping("/reservations/{id}/cancel")
+    @PostMapping("/{id}/cancel")
     public LimitReservationResponse cancel(@PathVariable("id") Long id) {
         var result = userService.cancelReservation(id);
         return reservationMapper.toResponse(result.reservation(), result.availableLimit());
